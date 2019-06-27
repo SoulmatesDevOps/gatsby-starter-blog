@@ -1,66 +1,94 @@
-const path = require(`path`)
-const { createFilePath } = require(`gatsby-source-filesystem`)
+// const Promise = require('bluebird')
+const path = require('path')
 
 exports.createPages = ({ graphql, actions }) => {
-  const { createPage } = actions
+  const { createPage, createRedirect } = actions
 
-  const blogPost = path.resolve(`./src/templates/blog-post.js`)
-  return graphql(
-    `
-      {
-        allMarkdownRemark(
-          sort: { fields: [frontmatter___date], order: DESC }
-          limit: 1000
-        ) {
-          edges {
-            node {
-              fields {
-                slug
-              }
-              frontmatter {
-                title
+  const contentfulBlogPosts = new Promise((resolve, reject) => {
+    const blogPost = path.resolve('./src/templates/blog-post.js')
+    resolve(
+      graphql(
+        `
+          {
+            allContentfulBlogPost (
+              filter: {
+                node_locale: {eq: "en-US"}
+              }, sort: {fields: date, order: DESC}
+            ) {
+              edges {
+                node {
+                  slug
+                }
               }
             }
           }
+          `
+      ).then(result => {
+        if (result.errors) {
+          console.log(result.errors)
+          reject(result.errors)
         }
-      }
-    `
-  ).then(result => {
-    if (result.errors) {
-      throw result.errors
-    }
-
-    // Create blog posts pages.
-    const posts = result.data.allMarkdownRemark.edges
-
-    posts.forEach((post, index) => {
-      const previous = index === posts.length - 1 ? null : posts[index + 1].node
-      const next = index === 0 ? null : posts[index - 1].node
-
-      createPage({
-        path: post.node.fields.slug,
-        component: blogPost,
-        context: {
-          slug: post.node.fields.slug,
-          previous,
-          next,
-        },
+        
+        const posts = result.data.allContentfulBlogPost.edges
+        
+        posts.forEach((post, index) => {
+          createPage({
+            path: `/blog/${post.node.slug}/`,
+            component: blogPost,
+            context: {
+              slug: post.node.slug
+            },
+          })
+        })
       })
-    })
-
-    return null
+    )
   })
-}
 
-exports.onCreateNode = ({ node, actions, getNode }) => {
-  const { createNodeField } = actions
+  const createRedirects = new Promise((resolve, reject) => {
+    resolve(
+      graphql(
+        `
+          {
+            allContentfulRedirect (
+              filter: {
+                node_locale: {eq: "en-US"}
+              }
+            ) {
+              edges {
+                node {
+                  source
+                  target
+                }
+              }
+            }
+          }
+          `
+      ).then(result => {
+        if (result.errors) {
+          console.log(result.errors)
+          reject(result.errors)
+        }
+        // Make a clean array of redirects
+        const redirects = result.data.allContentfulRedirect.edges.map(v => v.node)
+        // Loop over the redirects and create frontend redirects
+        redirects.forEach(({ source, target }) => {
+          target = target === '' ? '/' : target
+          createRedirect({
+            fromPath: source,
+            redirectInBrowser: true,
+            toPath: target,
+          })
+          // Uncomment next line to see forEach in action during build
+          console.log('\nRedirecting:\n' + source + '\nTo:\n' + target + '\n');
+        })
+      })
+    )
+  })
 
-  if (node.internal.type === `MarkdownRemark`) {
-    const value = createFilePath({ node, getNode })
-    createNodeField({
-      name: `slug`,
-      node,
-      value,
-    })
-  }
+  return Promise.all([
+    contentfulBlogPosts,
+    createRedirects,
+  ]).then(values => {
+    console.log(values)
+  })
 }

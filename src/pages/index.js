@@ -10,29 +10,31 @@ class BlogIndex extends React.Component {
   render() {
     const { data } = this.props
     const siteTitle = data.site.siteMetadata.title
-    const posts = data.allMarkdownRemark.edges
+    // const posts = data.allMarkdownRemark.edges
+    const posts = data.allContentfulBlogPost.edges
 
     return (
       <Layout location={this.props.location} title={siteTitle}>
         <SEO title="All posts" />
         <Bio />
         {posts.map(({ node }) => {
-          const title = node.frontmatter.title || node.fields.slug
+          const title = node.title || node.slug
+          const link = `/blog/${node.slug}/`
           return (
-            <div key={node.fields.slug}>
+            <div key={node.slug}>
               <h3
                 style={{
                   marginBottom: rhythm(1 / 4),
                 }}
               >
-                <Link style={{ boxShadow: `none` }} to={node.fields.slug}>
+                <Link style={{ boxShadow: `none` }} to={link}>
                   {title}
                 </Link>
               </h3>
-              <small>{node.frontmatter.date}</small>
+              <small>{node.date}</small>
               <p
                 dangerouslySetInnerHTML={{
-                  __html: node.frontmatter.description || node.excerpt,
+                  __html: node.description || node.excerpt,
                 }}
               />
             </div>
@@ -46,6 +48,31 @@ class BlogIndex extends React.Component {
 export default BlogIndex
 
 export const pageQuery = graphql`
+  query {
+    site {
+      siteMetadata {
+        title
+      }
+    }
+    allContentfulBlogPost(
+      filter: {
+        node_locale: {eq: "en-US"}
+      }, sort: {fields: date, order: DESC
+    }) {
+      edges {
+        node {
+          slug
+          date(formatString: "MMMM DD, YYYY")
+          title
+          description
+        }
+      }
+    }
+  }
+`
+
+
+/* export const pageQuery = graphql`
   query {
     site {
       siteMetadata {
@@ -69,3 +96,4 @@ export const pageQuery = graphql`
     }
   }
 `
+ */
