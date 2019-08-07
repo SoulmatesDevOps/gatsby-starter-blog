@@ -1,5 +1,6 @@
 // const Promise = require('bluebird')
 const path = require('path')
+const updateAmplifyRedirects = require('./amplify-redirects')
 
 exports.createPages = ({ graphql, actions }) => {
   const { createPage, createRedirect } = actions
@@ -58,6 +59,7 @@ exports.createPages = ({ graphql, actions }) => {
                 node {
                   source
                   target
+                  status
                 }
               }
             }
@@ -70,17 +72,21 @@ exports.createPages = ({ graphql, actions }) => {
         }
         // Make a clean array of redirects
         const redirects = result.data.allContentfulRedirect.edges.map(v => v.node)
-        // Loop over the redirects and create frontend redirects
-        redirects.forEach(({ source, target }) => {
-          target = target === '' ? '/' : target
-          createRedirect({
-            fromPath: source,
-            redirectInBrowser: true,
-            toPath: target,
+        if (redirects.length > 0) {
+          console.log({redirects})
+          updateAmplifyRedirects(redirects)
+          // Loop over the redirects and create frontend redirects
+          redirects.forEach(({ source, target }) => {
+            target = target === '' ? '/' : target
+            createRedirect({
+              fromPath: source,
+              redirectInBrowser: true,
+              toPath: target,
+            })
+            // Uncomment next line to see forEach in action during build
+            console.log('\nRedirecting:\n' + source + '\nTo:\n' + target + '\n');
           })
-          // Uncomment next line to see forEach in action during build
-          console.log('\nRedirecting:\n' + source + '\nTo:\n' + target + '\n');
-        })
+        }
       })
     )
   })
