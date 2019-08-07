@@ -7,7 +7,6 @@ frontend:
     build:
       commands:
         - yarn run build
-        - yarn run amplify-redirects
   artifacts:
     baseDirectory: public
     files:
